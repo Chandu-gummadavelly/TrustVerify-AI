@@ -4,41 +4,43 @@ import joblib
 import sys
 import os
 
-# 1. FIX THE MODULE PATH
-# This finds the 'src' folder relative to where app.py is located
-current_dir = os.path.dirname(os.path.abspath(__file__))
-src_path = os.path.join(current_dir, 'src')
-if src_path not in sys.path:
-    sys.path.append(src_path)
+# 1. Absolute Path Logic
+# This gets the directory where app.py lives
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Now we can import from preprocess safely
-import preprocess 
+# 2. Add 'src' to Python Path so it can find preprocess.py
+sys.path.append(os.path.join(BASE_DIR, 'src'))
+
+try:
+    from preprocess import prepare_data
+except ImportError:
+    st.error("Could not find 'src/preprocess.py'. Check your folder structure on GitHub!")
 
 st.set_page_config(page_title="TrustVerify: AI Credit Risk", layout="wide")
 
-# 2. FIX THE MODEL PATH
 @st.cache_resource
 def load_assets():
-    # Construct the absolute path to the model file
-    model_path = os.path.join(current_dir, 'models', 'xgboost_model.pkl')
+    # Construct paths using the BASE_DIR
+    model_path = os.path.join(BASE_DIR, 'models', 'xgboost_model.pkl')
+    data_path = os.path.join(BASE_DIR, 'data', 'german_credit_clean.csv')
     
+    # Check if files exist before loading
     if not os.path.exists(model_path):
-        st.error(f"Model file not found at {model_path}. Did you push the 'models' folder to GitHub?")
+        st.error(f"❌ Model file NOT found at: {model_path}")
         return None, None
-        
+
     model = joblib.load(model_path)
-    
-    # Load data for LIME initialization
-    data_path = os.path.join(current_dir, 'data', 'german_credit_clean.csv')
-    X_train, _, _, _ = preprocess.prepare_data(data_path)
-    
+    X_train, _, _, _ = prepare_data(data_path)
     return model, X_train
 
+# Load assets
 model, X_train = load_assets()
-# ... rest of your code
-preprocessor = model.named_steps['preprocessor']
-classifier = model.named_steps['classifier']
 
+# Only continue if model loaded successfully
+if model is not None:
+    preprocessor = model.named_steps['preprocessor']
+    classifier = model.named_steps['classifier']
+    # ... (rest of your UI code below)
 # 3. Sidebar for User Input
 st.sidebar.header("📝 Applicant Details")
 

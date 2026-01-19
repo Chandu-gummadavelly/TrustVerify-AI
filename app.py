@@ -1,35 +1,41 @@
-import sys
-import os
-
-# Add the 'src' directory to the path so app.py can find preprocess.py
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
-
-import streamlit as st
-import pandas as pd
-# ... (rest of your imports)
 import streamlit as st
 import pandas as pd
 import joblib
-from lime.lime_tabular import LimeTabularExplainer
-import streamlit.components.v1 as components
+import sys
+import os
 
+# 1. FIX THE MODULE PATH
+# This finds the 'src' folder relative to where app.py is located
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_path = os.path.join(current_dir, 'src')
+if src_path not in sys.path:
+    sys.path.append(src_path)
 
-# 1. Page Configuration
+# Now we can import from preprocess safely
+import preprocess 
+
 st.set_page_config(page_title="TrustVerify: AI Credit Risk", layout="wide")
 
-st.title("🛡️ TrustVerify: Interpretable Credit Risk System")
-st.markdown("### 2nd Year ML Project: Predicting & Explaining Financial Risk")
-
-# 2. Load the Pipeline & Data
+# 2. FIX THE MODEL PATH
 @st.cache_resource
 def load_assets():
-    model = joblib.load('models/xgboost_model.pkl')
-    # We need the training data shape to initialize LIME
-    from preprocess import prepare_data
-    X_train, _, _, _ = prepare_data('data/german_credit_clean.csv')
+    # Construct the absolute path to the model file
+    model_path = os.path.join(current_dir, 'models', 'xgboost_model.pkl')
+    
+    if not os.path.exists(model_path):
+        st.error(f"Model file not found at {model_path}. Did you push the 'models' folder to GitHub?")
+        return None, None
+        
+    model = joblib.load(model_path)
+    
+    # Load data for LIME initialization
+    data_path = os.path.join(current_dir, 'data', 'german_credit_clean.csv')
+    X_train, _, _, _ = preprocess.prepare_data(data_path)
+    
     return model, X_train
 
 model, X_train = load_assets()
+# ... rest of your code
 preprocessor = model.named_steps['preprocessor']
 classifier = model.named_steps['classifier']
 
